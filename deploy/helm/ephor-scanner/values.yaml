@@ -1,0 +1,107 @@
+# -- Container image settings
+image:
+  repository: ephor-scanner
+  tag: ""  # Defaults to appVersion
+  pullPolicy: IfNotPresent
+
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+
+# -- Override the release name
+nameOverride: ""
+fullnameOverride: ""
+
+# -- CronJob schedule (default: every 6 hours)
+schedule: "0 */6 * * *"
+
+# -- CronJob active deadline in seconds (default: 1 hour)
+activeDeadlineSeconds: 3600
+
+# -- Number of successful jobs to keep in history
+successfulJobsHistoryLimit: 3
+
+# -- Number of failed jobs to keep in history
+failedJobsHistoryLimit: 3
+
+# -- Backoff limit for failed jobs
+backoffLimit: 1
+
+# -- ServiceAccount configuration
+serviceAccount:
+  # -- Create a ServiceAccount
+  create: true
+  # -- Annotations to add to the ServiceAccount
+  annotations: {}
+  # -- Name override (defaults to release fullname)
+  name: ""
+
+# -- Ephor API connection (stored in Secret)
+ephor:
+  # -- Ephor API base URL (required)
+  apiUrl: ""
+  # -- Authentication header name (e.g. X-API-Key, Authorization)
+  authHeader: ""
+  # -- Authentication header value
+  authValue: ""
+
+# -- Scanner configuration (stored in ConfigMap)
+scan:
+  # -- Comma-separated list of namespaces to scan (required)
+  namespaces: ""
+  # -- Number of concurrent image scans
+  concurrency: "3"
+  # -- Comma-separated severity filter (CRITICAL,HIGH,MEDIUM,LOW)
+  severity: "CRITICAL,HIGH,MEDIUM,LOW"
+  # -- Comma-separated workload types (Deployment,StatefulSet,DaemonSet,CronJob)
+  workloadTypes: "Deployment,StatefulSet,DaemonSet,CronJob"
+
+# -- Trivy settings (stored in ConfigMap)
+trivy:
+  # -- Path to the trivy binary
+  binary: "trivy"
+  # -- Cache directory for Trivy DB
+  cacheDir: "/tmp/trivy-cache"
+  # -- Scan timeout in seconds
+  timeout: "300"
+  # -- DB update timeout in seconds
+  dbUpdateTimeout: "60"
+  # -- Skip Trivy DB update on startup
+  skipDbUpdate: "false"
+  # -- Custom Trivy DB OCI repository (leave empty for default)
+  dbRepo: ""
+
+# -- Logging configuration (stored in ConfigMap)
+log:
+  # -- Log level: debug, info, warn, error
+  level: "info"
+  # -- Log format: json or text
+  format: "json"
+
+# -- Trivy cache PVC settings
+cache:
+  # -- Enable persistent cache via PVC (false = emptyDir)
+  enabled: true
+  # -- Storage class (empty = cluster default)
+  storageClass: ""
+  # -- PVC size
+  size: 1Gi
+  # -- Access mode
+  accessMode: ReadWriteOnce
+
+# -- Pod resource requests and limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# -- Node selector for pod scheduling
+nodeSelector: {}
+
+# -- Tolerations for pod scheduling
+tolerations: []
+
+# -- Affinity rules for pod scheduling
+affinity: {}

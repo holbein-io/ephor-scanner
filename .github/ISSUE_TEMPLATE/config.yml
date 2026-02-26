@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability
+    url: https://github.com/holbein-io/ephor-scanner/security/advisories/new
+    about: Report a security vulnerability privately via GitHub Security Advisories.
+  - name: Questions
+    url: https://github.com/holbein-io/ephor-scanner/discussions
+    about: Ask questions and start discussions.

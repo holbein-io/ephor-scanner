@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ephor-scanner.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ephor-scanner.labels" . | nindent 4 }}
+data:
+  SCAN_NAMESPACES: {{ required "scan.namespaces is required" .Values.scan.namespaces | quote }}
+  SCAN_CONCURRENCY: {{ .Values.scan.concurrency | quote }}
+  SCAN_SEVERITY: {{ .Values.scan.severity | quote }}
+  SCAN_WORKLOAD_TYPES: {{ .Values.scan.workloadTypes | quote }}
+  TRIVY_BINARY: {{ .Values.trivy.binary | quote }}
+  TRIVY_CACHE_DIR: {{ .Values.trivy.cacheDir | quote }}
+  TRIVY_TIMEOUT: {{ .Values.trivy.timeout | quote }}
+  TRIVY_DB_UPDATE_TIMEOUT: {{ .Values.trivy.dbUpdateTimeout | quote }}
+  TRIVY_SKIP_DB_UPDATE: {{ .Values.trivy.skipDbUpdate | quote }}
+  {{- if .Values.trivy.dbRepo }}
+  TRIVY_DB_REPO: {{ .Values.trivy.dbRepo | quote }}
+  {{- end }}
+  LOG_LEVEL: {{ .Values.log.level | quote }}
+  LOG_FORMAT: {{ .Values.log.format | quote }}

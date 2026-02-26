@@ -1,0 +1,19 @@
+{
+  "Version": "0.67.2",
+  "VulnerabilityDB": {
+    "Version": 2,
+    "NextUpdate": "2026-02-18T18:41:24.856327085Z",
+    "UpdatedAt": "2026-02-17T18:41:24.856327606Z",
+    "DownloadedAt": "2026-02-17T21:06:24.758689716Z"
+  },
+  "JavaDB": {
+    "Version": 1,
+    "NextUpdate": "2025-11-14T00:57:18.965294456Z",
+    "UpdatedAt": "2025-11-11T00:57:18.965294616Z",
+    "DownloadedAt": "2025-11-11T14:18:24.43766618Z"
+  },
+  "CheckBundle": {
+    "Digest": "sha256:0491169789b867ae5a7353381220c1d4d97b3a0d6d9dfd84a25d06f0ba68aa93",
+    "DownloadedAt": "2025-11-11T14:37:57.995814271Z"
+  }
+}

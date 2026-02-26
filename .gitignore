@@ -1,0 +1,29 @@
+# Build output
+bin/
+/scanner
+
+# Trivy cache
+db/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Internal planning docs
+docs/tasks/
+docs/architecture/
+docs/adr/
+
+# OS
+.DS_Store
+Thumbs.db

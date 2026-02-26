@@ -1,0 +1,7 @@
+bin/
+.idea/
+.vscode/
+docs/
+scanner
+*.iml
+.git

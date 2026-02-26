@@ -1,0 +1,53 @@
+{
+  "SchemaVersion": 2,
+  "ArtifactName": "nginx:1.25",
+  "ArtifactType": "container_image",
+  "Results": [
+    {
+      "Target": "nginx:1.25 (debian 12.4)",
+      "Class": "os-pkgs",
+      "Type": "debian",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2024-1234",
+          "PkgName": "openssl",
+          "InstalledVersion": "3.0.11",
+          "FixedVersion": "3.0.13",
+          "Status": "fixed",
+          "Severity": "CRITICAL",
+          "Title": "Buffer overflow in SSL handshake",
+          "Description": "A buffer overflow was found in OpenSSL.",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2024-1234",
+          "PublishedDate": "2024-01-15T00:00:00Z"
+        },
+        {
+          "VulnerabilityID": "CVE-2024-5678",
+          "PkgName": "curl",
+          "InstalledVersion": "7.88.1",
+          "Status": "affected",
+          "Severity": "LOW",
+          "Title": "Information disclosure in curl",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2024-5678",
+          "PublishedDate": "2024-03-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "Target": "usr/local/bin/nginx",
+      "Class": "lang-pkgs",
+      "Type": "gomod",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2024-9999",
+          "PkgName": "golang.org/x/net",
+          "InstalledVersion": "0.17.0",
+          "FixedVersion": "0.23.0",
+          "Status": "fixed",
+          "Severity": "HIGH",
+          "Title": "HTTP/2 rapid reset attack",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2024-9999"
+        }
+      ]
+    }
+  ]
+}
