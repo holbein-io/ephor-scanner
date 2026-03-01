@@ -17,6 +17,7 @@ data:
   TRIVY_SKIP_DB_UPDATE: {{ .Values.trivy.skipDbUpdate | quote }}
   {{- if .Values.trivy.dbRepo }}
   TRIVY_DB_REPO: {{ .Values.trivy.dbRepo | quote }}
+  TRIVY_DB_REPOSITORY: {{ .Values.trivy.dbRepo | quote }}
   {{- end }}
   LOG_LEVEL: {{ .Values.log.level | quote }}
   LOG_FORMAT: {{ .Values.log.format | quote }}

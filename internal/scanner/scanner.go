@@ -64,9 +64,9 @@ func (s *Scanner) UpdateDB(ctx context.Context) error {
 }
 
 func (s *Scanner) ScanImage(ctx context.Context, imageRef string) (*TrivyReport, error) {
-	args := []string{"image", imageRef, "--format", "json", "--scanners", "vuln", "--cache-dir", s.CacheDir}
-	if s.SkipDBUpdate {
-		args = append(args, "--skip-db-update")
+	args := []string{"image", imageRef, "--format", "json", "--scanners", "vuln", "--cache-dir", s.CacheDir, "--skip-db-update"}
+	if s.DBRepo != "" {
+		args = append(args, "--db-repository", s.DBRepo)
 	}
 	ctx, cancel := context.WithTimeout(ctx, s.ScanTimeout)
 	defer cancel()

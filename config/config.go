@@ -150,6 +150,7 @@ func Load() (*Config, error) {
 		TrivyScanTimeout:     getDurationEnv("TRIVY_TIMEOUT", 5*time.Minute),
 		TrivyDBUpdateTimeout: getDurationEnv("TRIVY_DB_UPDATE_TIMEOUT", 1*time.Minute),
 
+		TrivyDBRepo:       GetEnvOrDefault("TRIVY_DB_REPO", ""),
 		TrivySkipDBUpdate: getBoolEnvOrDefault("TRIVY_SKIP_DB_UPDATE", false),
 
 		LogLevel:  GetEnvOrDefault("LOG_LEVEL", "info"),
