@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os/exec"
+	"strconv"
 	"time"
 )
 
@@ -18,6 +19,7 @@ type Scanner struct {
 	DBUpdateTimeout time.Duration
 	DBRepo          string
 	SkipDBUpdate    bool
+	dbReady         bool
 
 	Namespaces    []string
 	Concurrency   int
@@ -47,7 +49,8 @@ func (s *Scanner) UpdateDB(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, s.DBUpdateTimeout)
 	defer cancel()
 
-	args := []string{"image", "--download-db-only", "--cache-dir", s.CacheDir}
+	args := []string{"image", "--download-db-only", "--cache-dir", s.CacheDir,
+		"--timeout", strconv.Itoa(int(s.DBUpdateTimeout.Seconds())) + "s"}
 	if s.DBRepo != "" {
 		args = append(args, "--db-repository", s.DBRepo)
 	}
@@ -60,11 +63,15 @@ func (s *Scanner) UpdateDB(ctx context.Context) error {
 		return fmt.Errorf("trivy db update failed: %w\nstderr: %s", err, stderr.String())
 	}
 
+	s.dbReady = true
 	return nil
 }
 
 func (s *Scanner) ScanImage(ctx context.Context, imageRef string) (*TrivyReport, error) {
-	args := []string{"image", imageRef, "--format", "json", "--scanners", "vuln", "--cache-dir", s.CacheDir, "--skip-db-update"}
+	args := []string{"image", imageRef, "--format", "json", "--scanners", "vuln", "--cache-dir", s.CacheDir}
+	if s.dbReady || s.SkipDBUpdate {
+		args = append(args, "--skip-db-update")
+	}
 	if s.DBRepo != "" {
 		args = append(args, "--db-repository", s.DBRepo)
 	}
