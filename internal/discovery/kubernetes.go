@@ -4,6 +4,7 @@ import (
 	"context"
 	"ephor-scanner/config"
 	"log/slog"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -122,10 +123,36 @@ func discoverDeployments(ctx context.Context, k kubernetes.Interface, ns string)
 func extractContainers(podSpec corev1.PodSpec) []Container {
 	var containers []Container
 	for _, c := range podSpec.InitContainers {
-		containers = append(containers, Container{Name: c.Name, Image: c.Image})
+		containers = append(containers, Container{Name: c.Name, Image: normalizeImageRef(c.Image)})
 	}
 	for _, c := range podSpec.Containers {
-		containers = append(containers, Container{Name: c.Name, Image: c.Image})
+		containers = append(containers, Container{Name: c.Name, Image: normalizeImageRef(c.Image)})
 	}
 	return containers
+}
+
+func normalizeImageRef(image string) string {
+	// Strip tag/digest to isolate the name portion
+	name := image
+	if i := strings.LastIndex(name, "@"); i != -1 {
+		name = name[:i]
+	}
+	if i := strings.LastIndex(name, ":"); i != -1 {
+		name = name[:i]
+	}
+
+	// If the first segment contains a dot or colon, it's already a registry hostname
+	firstSegment := name
+	if i := strings.Index(name, "/"); i != -1 {
+		firstSegment = name[:i]
+	}
+	if strings.ContainsAny(firstSegment, ".:") {
+		return image
+	}
+
+	// Docker Hub: single segment = official image, otherwise user image
+	if !strings.Contains(name, "/") {
+		return "docker.io/library/" + image
+	}
+	return "docker.io/" + image
 }

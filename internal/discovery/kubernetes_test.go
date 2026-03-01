@@ -74,7 +74,7 @@ func TestDiscover_MultipleWorkloadTypes(t *testing.T) {
 	if web.Kind != "Deployment" || web.Namespace != "prod" {
 		t.Errorf("web: got kind=%s ns=%s, want kind=Deployment ns=prod", web.Kind, web.Namespace)
 	}
-	if len(web.Containers) != 1 || web.Containers[0].Image != "nginx:1.25" {
+	if len(web.Containers) != 1 || web.Containers[0].Image != "docker.io/library/nginx:1.25" {
 		t.Errorf("web: unexpected containers %v", web.Containers)
 	}
 
@@ -143,11 +143,11 @@ func TestDiscover_InitContainers(t *testing.T) {
 		t.Fatalf("expected 2 containers (init + regular), got %d", len(containers))
 	}
 
-	if containers[0].Name != "init-schema" || containers[0].Image != "migrate:v2" {
-		t.Errorf("init container: got %v, want name=init-schema image=migrate:v2", containers[0])
+	if containers[0].Name != "init-schema" || containers[0].Image != "docker.io/library/migrate:v2" {
+		t.Errorf("init container: got %v, want name=init-schema image=docker.io/library/migrate:v2", containers[0])
 	}
-	if containers[1].Name != "postgres" || containers[1].Image != "postgres:16" {
-		t.Errorf("regular container: got %v, want name=postgres image=postgres:16", containers[1])
+	if containers[1].Name != "postgres" || containers[1].Image != "docker.io/library/postgres:16" {
+		t.Errorf("regular container: got %v, want name=postgres image=docker.io/library/postgres:16", containers[1])
 	}
 }
 
