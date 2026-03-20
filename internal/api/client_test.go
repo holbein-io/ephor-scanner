@@ -36,7 +36,7 @@ func TestIngestScan_Success(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(models.ScanIngestResponse{
+		_ = json.NewEncoder(w).Encode(models.ScanIngestResponse{
 			ScanId:          42,
 			Vulnerabilities: 5,
 			Workloads:       2,
@@ -73,7 +73,7 @@ func TestIngestScan_Success(t *testing.T) {
 func TestIngestScan_ClientError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		io.WriteString(w, `{"error":"validation failed"}`)
+		_, _ = io.WriteString(w, `{"error":"validation failed"}`)
 	}))
 	defer server.Close()
 
@@ -103,7 +103,7 @@ func TestIngestScan_ClientError(t *testing.T) {
 func TestIngestScan_ServerError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		io.WriteString(w, "internal server error")
+		_, _ = io.WriteString(w, "internal server error")
 	}))
 	defer server.Close()
 
@@ -154,7 +154,7 @@ func TestIngestScan_AuthHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuthHeader = r.Header.Get("X-Auth-Token")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(models.ScanIngestResponse{})
+		_ = json.NewEncoder(w).Encode(models.ScanIngestResponse{})
 	}))
 	defer server.Close()
 

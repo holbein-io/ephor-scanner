@@ -49,6 +49,12 @@ func BuildNamespacePayload(namespace string, workloads []discovery.Workload, sca
 			}
 
 			cd.Vulnerabilities = mapVulnerabilities(result.Report)
+			cd.DetectedEcosystems = extractEcosystems(result.Report)
+			if result.Report.Metadata.OS != nil {
+				cd.OSFamily = result.Report.Metadata.OS.Family
+				cd.OSName = result.Report.Metadata.OS.Name
+			}
+			cd.RepoDigests = result.Report.Metadata.RepoDigests
 			containers = append(containers, cd)
 		}
 
@@ -57,6 +63,7 @@ func BuildNamespacePayload(namespace string, workloads []discovery.Workload, sca
 			Name:       w.Name,
 			Kind:       w.Kind,
 			Containers: containers,
+			Labels:     w.Labels,
 		})
 	}
 
@@ -83,12 +90,15 @@ func mapVulnerabilities(report *scanner.TrivyReport) []models.VulnerabilityData 
 				CveId:          v.VulnerabilityID,
 				PackageName:    v.PkgName,
 				PackageVersion: v.InstalledVersion,
+				PackageClass:   result.Class,
+				PackageType:    result.Type,
 				Severity:       v.Severity,
 				Title:          v.Title,
 				Description:    v.Description,
 				PrimaryURL:     v.PrimaryURL,
 				FixedVersion:   v.FixedVersion,
 				ScannerType:    result.Type,
+				References:     v.References,
 			}
 
 			if v.PublishedDate != "" {
@@ -97,10 +107,37 @@ func mapVulnerabilities(report *scanner.TrivyReport) []models.VulnerabilityData 
 				}
 			}
 
+			vd.CvssV3Vector, vd.CvssV3Score = extractCVSSv3(v.CVSS)
+
 			vulns = append(vulns, vd)
 		}
 	}
 	return vulns
+}
+
+func extractCVSSv3(cvss map[string]scanner.TrivyCVSS) (string, float64) {
+	// Prefer NVD source, fall back to first available
+	if nvd, ok := cvss["nvd"]; ok && nvd.V3Vector != "" {
+		return nvd.V3Vector, nvd.V3Score
+	}
+	for _, c := range cvss {
+		if c.V3Vector != "" {
+			return c.V3Vector, c.V3Score
+		}
+	}
+	return "", 0
+}
+
+func extractEcosystems(report *scanner.TrivyReport) []string {
+	seen := make(map[string]bool)
+	var ecosystems []string
+	for _, result := range report.Results {
+		if result.Type != "" && !seen[result.Type] {
+			seen[result.Type] = true
+			ecosystems = append(ecosystems, result.Type)
+		}
+	}
+	return ecosystems
 }
 
 func determineStatus(total, failed int) models.ScanStatus {

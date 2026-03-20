@@ -23,6 +23,7 @@ type Workload struct {
 	Name       string
 	Kind       string
 	Containers []Container
+	Labels     map[string]string
 }
 type Container struct {
 	Name  string

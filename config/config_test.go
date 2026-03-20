@@ -15,14 +15,16 @@ func clearEnv(t *testing.T) {
 		"LOG_LEVEL", "LOG_FORMAT",
 	}
 	for _, k := range keys {
-		os.Unsetenv(k)
+		if err := os.Unsetenv(k); err != nil {
+			t.Fatalf("failed to unset %s: %v", k, err)
+		}
 	}
 }
 
 func setRequiredEnv(t *testing.T) {
 	t.Helper()
-	os.Setenv("EPHOR_API_URL", "https://api.example.com")
-	os.Setenv("SCAN_NAMESPACES", "prod,staging")
+	t.Setenv("EPHOR_API_URL", "https://api.example.com")
+	t.Setenv("SCAN_NAMESPACES", "prod,staging")
 }
 
 func TestLoad_MissingRequiredVars(t *testing.T) {
@@ -33,7 +35,7 @@ func TestLoad_MissingRequiredVars(t *testing.T) {
 		t.Fatal("expected error when required vars are missing")
 	}
 
-	os.Setenv("EPHOR_API_URL", "https://api.example.com")
+	t.Setenv("EPHOR_API_URL", "https://api.example.com")
 	_, err = Load()
 	if err == nil {
 		t.Fatal("expected error when SCAN_NAMESPACES is missing")
@@ -81,8 +83,8 @@ func TestLoad_Defaults(t *testing.T) {
 func TestLoad_CommaParsing(t *testing.T) {
 	clearEnv(t)
 	setRequiredEnv(t)
-	os.Setenv("SCAN_SEVERITY", "CRITICAL , HIGH")
-	os.Setenv("SCAN_WORKLOAD_TYPES", "Deployment,CronJob")
+	t.Setenv("SCAN_SEVERITY", "CRITICAL , HIGH")
+	t.Setenv("SCAN_WORKLOAD_TYPES", "Deployment,CronJob")
 
 	cfg, err := Load()
 	if err != nil {
@@ -103,11 +105,11 @@ func TestLoad_CommaParsing(t *testing.T) {
 func TestLoad_CustomOverrides(t *testing.T) {
 	clearEnv(t)
 	setRequiredEnv(t)
-	os.Setenv("SCAN_CONCURRENCY", "10")
-	os.Setenv("TRIVY_BINARY", "/usr/bin/trivy")
-	os.Setenv("TRIVY_TIMEOUT", "10m")
-	os.Setenv("TRIVY_SKIP_DB_UPDATE", "true")
-	os.Setenv("LOG_LEVEL", "debug")
+	t.Setenv("SCAN_CONCURRENCY", "10")
+	t.Setenv("TRIVY_BINARY", "/usr/bin/trivy")
+	t.Setenv("TRIVY_TIMEOUT", "10m")
+	t.Setenv("TRIVY_SKIP_DB_UPDATE", "true")
+	t.Setenv("LOG_LEVEL", "debug")
 
 	cfg, err := Load()
 	if err != nil {

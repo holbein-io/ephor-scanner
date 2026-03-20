@@ -14,11 +14,9 @@ func ScanImages(ctx context.Context, s ImageScanner, images []string, concurrenc
 	sem := make(chan struct{}, concurrency)
 
 	for _, image := range images {
-		select {
-		case <-ctx.Done():
+		if ctx.Err() != nil {
 			slog.Warn("scan cancelled, skipping remaining images")
 			break
-		default:
 		}
 
 		sem <- struct{}{}

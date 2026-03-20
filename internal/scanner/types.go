@@ -1,12 +1,22 @@
 package scanner
 
 // TrivyReport is the top-level JSON output from `trivy image --format json`.
-// We only unmarshal the fields we need; the rest (Metadata, ImageConfig, etc.) is ignored.
 type TrivyReport struct {
 	SchemaVersion int           `json:"SchemaVersion"`
 	ArtifactName  string        `json:"ArtifactName"`
 	ArtifactType  string        `json:"ArtifactType"`
+	Metadata      TrivyMetadata `json:"Metadata"`
 	Results       []TrivyResult `json:"Results"`
+}
+
+type TrivyMetadata struct {
+	OS          *TrivyOS `json:"OS,omitempty"`
+	RepoDigests []string `json:"RepoDigests,omitempty"`
+}
+
+type TrivyOS struct {
+	Family string `json:"Family"` // "debian", "alpine", "redhat", etc.
+	Name   string `json:"Name"`   // "12.8", "3.21", etc.
 }
 
 type TrivyResult struct {
@@ -16,23 +26,26 @@ type TrivyResult struct {
 	Vulnerabilities []TrivyVulnerability `json:"Vulnerabilities"`
 }
 
-// TODO: useful information to include later on
-// Metadata.OS, Metadata.ImageID/RepoDigests
-// ImageConfig.history --> ???
-// Vulnerability.CVSS
-// Vulnerability.References
-// Vulnerability.Layer
 type TrivyVulnerability struct {
-	VulnerabilityID  string `json:"VulnerabilityID"`
-	PkgName          string `json:"PkgName"`
-	InstalledVersion string `json:"InstalledVersion"`
-	FixedVersion     string `json:"FixedVersion,omitempty"`
-	Status           string `json:"Status"` // "affected", "fixed", etc.
-	Severity         string `json:"Severity"`
-	Title            string `json:"Title,omitempty"`
-	Description      string `json:"Description,omitempty"`
-	PrimaryURL       string `json:"PrimaryURL,omitempty"`
-	PublishedDate    string `json:"PublishedDate,omitempty"`
+	VulnerabilityID  string               `json:"VulnerabilityID"`
+	PkgName          string               `json:"PkgName"`
+	InstalledVersion string               `json:"InstalledVersion"`
+	FixedVersion     string               `json:"FixedVersion,omitempty"`
+	Status           string               `json:"Status"`
+	Severity         string               `json:"Severity"`
+	Title            string               `json:"Title,omitempty"`
+	Description      string               `json:"Description,omitempty"`
+	PrimaryURL       string               `json:"PrimaryURL,omitempty"`
+	PublishedDate    string               `json:"PublishedDate,omitempty"`
+	References       []string             `json:"References,omitempty"`
+	CVSS             map[string]TrivyCVSS `json:"CVSS,omitempty"`
+}
+
+type TrivyCVSS struct {
+	V3Vector string  `json:"V3Vector,omitempty"`
+	V3Score  float64 `json:"V3Score,omitempty"`
+	V2Vector string  `json:"V2Vector,omitempty"`
+	V2Score  float64 `json:"V2Score,omitempty"`
 }
 
 type TrivyVersion struct {
