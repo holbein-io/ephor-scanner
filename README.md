@@ -143,6 +143,10 @@ Design decisions are documented in `docs/adr/`. Key choices:
 - **CronJob deployment model** (ADR-004) -- resource-efficient batch execution
 - **Persistent Trivy cache** (ADR-009) -- PVC avoids re-downloading the vulnerability DB on each run
 
+## Compatibility
+
+Ephor components are versioned independently. Check the [compatibility matrix](https://docs.holbein.io/reference/compatibility) to ensure your scanner, API, and Trivy versions work together.
+
 ## Contributing
 
 Contributions are welcome. Please read our [Contributing Guide](CONTRIBUTING.md) for details on the development workflow, commit conventions, and pull request process.

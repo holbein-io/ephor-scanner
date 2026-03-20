@@ -87,6 +87,60 @@ func TestDiscover_MultipleWorkloadTypes(t *testing.T) {
 	}
 }
 
+func TestExtractEphorLabels(t *testing.T) {
+	tests := []struct {
+		name   string
+		labels map[string]string
+		want   map[string]string
+	}{
+		{
+			name: "filters and strips ephor.dev/ prefix",
+			labels: map[string]string{
+				"app":                   "web",
+				"ephor.dev/exposure":    "public",
+				"ephor.dev/tier":        "frontend",
+				"ephor.dev/handles-pii": "true",
+				"team":                  "platform",
+			},
+			want: map[string]string{
+				"exposure":    "public",
+				"tier":        "frontend",
+				"handles-pii": "true",
+			},
+		},
+		{
+			name:   "returns nil when no ephor labels",
+			labels: map[string]string{"app": "web", "version": "v1"},
+			want:   nil,
+		},
+		{
+			name:   "returns nil for nil input",
+			labels: nil,
+			want:   nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractEphorLabels(tt.labels)
+			if tt.want == nil {
+				if got != nil {
+					t.Errorf("expected nil, got %v", got)
+				}
+				return
+			}
+			if len(got) != len(tt.want) {
+				t.Fatalf("expected %d labels, got %d: %v", len(tt.want), len(got), got)
+			}
+			for k, v := range tt.want {
+				if got[k] != v {
+					t.Errorf("label %q: expected %q, got %q", k, v, got[k])
+				}
+			}
+		})
+	}
+}
+
 func TestDiscover_EmptyNamespace(t *testing.T) {
 	client := fake.NewSimpleClientset()
 

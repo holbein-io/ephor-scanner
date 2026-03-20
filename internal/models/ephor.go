@@ -39,25 +39,32 @@ type ScanIngestRequest struct {
 }
 
 type WorkloadData struct {
-	Namespace  string          `json:"namespace"`
-	Name       string          `json:"name"`
-	Kind       string          `json:"kind"`
-	Containers []ContainerData `json:"containers"`
+	Namespace  string            `json:"namespace"`
+	Name       string            `json:"name"`
+	Kind       string            `json:"kind"`
+	Containers []ContainerData   `json:"containers"`
+	Labels     map[string]string `json:"labels,omitempty"`
 }
 
 type ContainerData struct {
-	Name             string              `json:"name"`
-	ImageName        string              `json:"image_name"`
-	ImageTag         string              `json:"image_tag"`
-	ImageCreated     *time.Time          `json:"image_created,omitempty"`
-	BaseImageCreated *time.Time          `json:"base_image_created,omitempty"`
-	Vulnerabilities  []VulnerabilityData `json:"vulnerabilities"`
+	Name               string              `json:"name"`
+	ImageName          string              `json:"image_name"`
+	ImageTag           string              `json:"image_tag"`
+	ImageCreated       *time.Time          `json:"image_created,omitempty"`
+	BaseImageCreated   *time.Time          `json:"base_image_created,omitempty"`
+	DetectedEcosystems []string            `json:"detected_ecosystems,omitempty"`
+	OSFamily           string              `json:"os_family,omitempty"`
+	OSName             string              `json:"os_name,omitempty"`
+	RepoDigests        []string            `json:"repo_digests,omitempty"`
+	Vulnerabilities    []VulnerabilityData `json:"vulnerabilities"`
 }
 
 type VulnerabilityData struct {
 	CveId          string     `json:"cve_id"`
 	PackageName    string     `json:"package_name"`
 	PackageVersion string     `json:"package_version"`
+	PackageClass   string     `json:"package_class"`
+	PackageType    string     `json:"package_type"`
 	Severity       string     `json:"severity"`
 	Title          string     `json:"title,omitempty"`
 	Description    string     `json:"description,omitempty"`
@@ -65,6 +72,9 @@ type VulnerabilityData struct {
 	PublishedDate  *time.Time `json:"published_date,omitempty"`
 	FixedVersion   string     `json:"fixed_version,omitempty"`
 	ScannerType    string     `json:"scanner_type"`
+	References     []string   `json:"references,omitempty"`
+	CvssV3Vector   string     `json:"cvss_v3_vector,omitempty"`
+	CvssV3Score    float64    `json:"cvss_v3_score,omitempty"`
 	FirstDetected  *time.Time `json:"first_detected,omitempty"`
 	LastSeen       *time.Time `json:"last_seen,omitempty"`
 }

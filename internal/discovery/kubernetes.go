@@ -4,6 +4,7 @@ import (
 	"context"
 	"ephor-scanner/config"
 	"log/slog"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,6 +58,7 @@ func discoverCronJobs(ctx context.Context, k kubernetes.Interface, ns string) ([
 			Name:       cj.Name,
 			Kind:       config.CronJob.String(),
 			Containers: containers,
+			Labels:     extractEphorLabels(cj.Labels),
 		})
 	}
 	return workloads, nil
@@ -76,6 +78,7 @@ func discoverDaemonSets(ctx context.Context, k kubernetes.Interface, ns string) 
 			Name:       ds.Name,
 			Kind:       config.DaemonSet.String(),
 			Containers: containers,
+			Labels:     extractEphorLabels(ds.Labels),
 		})
 	}
 	return workloads, nil
@@ -95,6 +98,7 @@ func discoverStatefulSet(ctx context.Context, k kubernetes.Interface, ns string)
 			Name:       ss.Name,
 			Kind:       config.StatefulSet.String(),
 			Containers: containers,
+			Labels:     extractEphorLabels(ss.Labels),
 		})
 	}
 	return workloads, nil
@@ -114,9 +118,25 @@ func discoverDeployments(ctx context.Context, k kubernetes.Interface, ns string)
 			Name:       depl.Name,
 			Kind:       config.Deployment.String(),
 			Containers: containers,
+			Labels:     extractEphorLabels(depl.Labels),
 		})
 	}
 	return workloads, nil
+}
+
+const ephorLabelPrefix = "ephor.dev/"
+
+func extractEphorLabels(labels map[string]string) map[string]string {
+	var result map[string]string
+	for k, v := range labels {
+		if strings.HasPrefix(k, ephorLabelPrefix) {
+			if result == nil {
+				result = make(map[string]string)
+			}
+			result[strings.TrimPrefix(k, ephorLabelPrefix)] = v
+		}
+	}
+	return result
 }
 
 func extractContainers(podSpec corev1.PodSpec) []Container {
