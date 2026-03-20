@@ -17,7 +17,7 @@ import (
 )
 
 func TestDiscover_MultipleWorkloadTypes(t *testing.T) {
-	client := fake.NewSimpleClientset(
+	client := fake.NewSimpleClientset( //nolint:staticcheck
 		&appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "prod"},
 			Spec: appsv1.DeploymentSpec{
@@ -142,7 +142,7 @@ func TestExtractEphorLabels(t *testing.T) {
 }
 
 func TestDiscover_EmptyNamespace(t *testing.T) {
-	client := fake.NewSimpleClientset()
+	client := fake.NewSimpleClientset() //nolint:staticcheck
 
 	d := &Discoverer{
 		K8s:           client,
@@ -160,7 +160,7 @@ func TestDiscover_EmptyNamespace(t *testing.T) {
 }
 
 func TestDiscover_InitContainers(t *testing.T) {
-	client := fake.NewSimpleClientset(
+	client := fake.NewSimpleClientset( //nolint:staticcheck
 		&appsv1.StatefulSet{
 			ObjectMeta: metav1.ObjectMeta{Name: "db", Namespace: "prod"},
 			Spec: appsv1.StatefulSetSpec{
@@ -206,7 +206,7 @@ func TestDiscover_InitContainers(t *testing.T) {
 }
 
 func TestDiscover_ErrorContinues(t *testing.T) {
-	client := fake.NewSimpleClientset(
+	client := fake.NewSimpleClientset( //nolint:staticcheck
 		&appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: "healthy"},
 			Spec: appsv1.DeploymentSpec{

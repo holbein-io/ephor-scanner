@@ -53,7 +53,7 @@ func (c *Client) IngestScan(ctx context.Context, request *models.ScanIngestReque
 	if err != nil {
 		return nil, err
 	}
-	defer rsp.Body.Close()
+	defer func() { _ = rsp.Body.Close() }()
 
 	if rsp.StatusCode < 200 || rsp.StatusCode >= 300 {
 		respBody, _ := io.ReadAll(rsp.Body)
