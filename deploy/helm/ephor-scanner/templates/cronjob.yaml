@@ -24,6 +24,8 @@ spec:
         spec:
           restartPolicy: Never
           serviceAccountName: {{ include "ephor-scanner.serviceAccountName" . }}
+          securityContext:
+            fsGroup: 10001
           {{- with .Values.imagePullSecrets }}
           imagePullSecrets:
             {{- toYaml . | nindent 12 }}

@@ -7,7 +7,9 @@ import (
 	"ephor-scanner/config"
 	"fmt"
 	"log/slog"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -68,7 +70,13 @@ func (s *Scanner) UpdateDB(ctx context.Context) error {
 }
 
 func (s *Scanner) ScanImage(ctx context.Context, imageRef string) (*TrivyReport, error) {
-	args := []string{"image", imageRef, "--format", "json", "--scanners", "vuln", "--cache-dir", s.CacheDir,
+	scanCacheDir, err := s.createScanCacheDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scan cache dir: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(scanCacheDir) }()
+
+	args := []string{"image", imageRef, "--format", "json", "--scanners", "vuln", "--cache-dir", scanCacheDir,
 		"--timeout", strconv.Itoa(int(s.ScanTimeout.Seconds())) + "s"}
 	if s.dbReady || s.SkipDBUpdate {
 		args = append(args, "--skip-db-update")
@@ -83,7 +91,7 @@ func (s *Scanner) ScanImage(ctx context.Context, imageRef string) (*TrivyReport,
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		return nil, fmt.Errorf("trivy image scan failed: %w\nstderr: %s", err, stderr.String())
 	}
@@ -94,6 +102,23 @@ func (s *Scanner) ScanImage(ctx context.Context, imageRef string) (*TrivyReport,
 	}
 
 	return &report, nil
+}
+
+func (s *Scanner) createScanCacheDir() (string, error) {
+	tmpDir, err := os.MkdirTemp("", "trivy-scan-*")
+	if err != nil {
+		return "", err
+	}
+	for _, sub := range []string{"db", "java-db"} {
+		src := filepath.Join(s.CacheDir, sub)
+		if _, err := os.Stat(src); err == nil {
+			if err := os.Symlink(src, filepath.Join(tmpDir, sub)); err != nil {
+				_ = os.RemoveAll(tmpDir)
+				return "", err
+			}
+		}
+	}
+	return tmpDir, nil
 }
 
 func (s *Scanner) GetVersion(ctx context.Context) (*TrivyVersion, error) {
