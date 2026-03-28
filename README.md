@@ -116,7 +116,7 @@ The binary is built to `bin/ephor-scanner`. Version is auto-detected from git ta
 docker build -t ephor-scanner .
 ```
 
-The image is a multi-stage build: Go binary compiled from source, Trivy binary copied from `aquasec/trivy:0.69.1`, both placed on an Alpine 3.21 base. Runs as non-root user (uid 10001).
+The image is a multi-stage build: Go binary compiled from source, Trivy binary copied from `aquasec/trivy:0.69.3`, both placed on an Alpine 3.21 base. Runs as non-root user (uid 10001).
 
 ## Architecture
 

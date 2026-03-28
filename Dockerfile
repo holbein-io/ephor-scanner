@@ -10,7 +10,7 @@ COPY . .
 ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=${VERSION}" -o /ephor-scanner ./cmd/scanner
 
-FROM aquasec/trivy:0.69.1 AS trivy
+FROM aquasec/trivy:0.69.3 AS trivy
 
 FROM alpine:3.21
 
