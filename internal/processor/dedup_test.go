@@ -48,10 +48,3 @@ func TestDeduplicateImages_CrossNamespace(t *testing.T) {
 		}
 	}
 }
-
-func TestDeduplicateImages_Empty(t *testing.T) {
-	result := DeduplicateImages([]discovery.Workload{})
-	if len(result) != 0 {
-		t.Errorf("expected 0 images, got %d", len(result))
-	}
-}

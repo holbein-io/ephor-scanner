@@ -70,6 +70,13 @@ trivy:
   # -- Custom Trivy DB OCI repository (leave empty for default)
   dbRepo: ""
 
+# -- SBOM generation settings (stored in ConfigMap)
+sbom:
+  # -- Enable SBOM generation alongside vulnerability scanning
+  enabled: "false"
+  # -- SBOM output format: cyclonedx or spdx-json
+  format: "cyclonedx"
+
 # -- Logging configuration (stored in ConfigMap)
 log:
   # -- Log level: debug, info, warn, error

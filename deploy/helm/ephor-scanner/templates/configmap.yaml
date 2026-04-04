@@ -19,5 +19,7 @@ data:
   TRIVY_DB_REPO: {{ .Values.trivy.dbRepo | quote }}
   TRIVY_DB_REPOSITORY: {{ .Values.trivy.dbRepo | quote }}
   {{- end }}
+  SBOM_ENABLED: {{ .Values.sbom.enabled | quote }}
+  SBOM_FORMAT: {{ .Values.sbom.format | quote }}
   LOG_LEVEL: {{ .Values.log.level | quote }}
   LOG_FORMAT: {{ .Values.log.format | quote }}

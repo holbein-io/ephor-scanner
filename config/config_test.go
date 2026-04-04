@@ -12,6 +12,7 @@ func clearEnv(t *testing.T) {
 		"EPHOR_API_URL", "EPHOR_AUTH_HEADER", "EPHOR_AUTH_VALUE",
 		"SCAN_NAMESPACES", "SCAN_CONCURRENCY", "SCAN_SEVERITY", "SCAN_WORKLOAD_TYPES",
 		"TRIVY_BINARY", "TRIVY_CACHE_DIR", "TRIVY_TIMEOUT", "TRIVY_DB_REPO", "TRIVY_SKIP_DB_UPDATE",
+		"SBOM_ENABLED", "SBOM_FORMAT",
 		"LOG_LEVEL", "LOG_FORMAT",
 	}
 	for _, k := range keys {
@@ -78,6 +79,12 @@ func TestLoad_Defaults(t *testing.T) {
 	if len(cfg.ScanWorkloadTypes) != 4 {
 		t.Errorf("ScanWorkloadTypes length = %d, want 4", len(cfg.ScanWorkloadTypes))
 	}
+	if cfg.SBOMEnabled != false {
+		t.Errorf("SBOMEnabled = %v, want false", cfg.SBOMEnabled)
+	}
+	if cfg.SBOMFormat != "cyclonedx" {
+		t.Errorf("SBOMFormat = %q, want %q", cfg.SBOMFormat, "cyclonedx")
+	}
 }
 
 func TestLoad_CommaParsing(t *testing.T) {
@@ -130,5 +137,39 @@ func TestLoad_CustomOverrides(t *testing.T) {
 	}
 	if cfg.LogLevel != "debug" {
 		t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "debug")
+	}
+}
+
+func TestLoad_SBOMCustomValues(t *testing.T) {
+	clearEnv(t)
+	setRequiredEnv(t)
+	t.Setenv("SBOM_ENABLED", "true")
+	t.Setenv("SBOM_FORMAT", "spdx-json")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SBOMEnabled != true {
+		t.Errorf("SBOMEnabled = %v, want true", cfg.SBOMEnabled)
+	}
+	if cfg.SBOMFormat != "spdx-json" {
+		t.Errorf("SBOMFormat = %q, want %q", cfg.SBOMFormat, "spdx-json")
+	}
+}
+
+func TestLoad_SBOMInvalidFormatFallsBack(t *testing.T) {
+	clearEnv(t)
+	setRequiredEnv(t)
+	t.Setenv("SBOM_FORMAT", "invalid-format")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.SBOMFormat != "cyclonedx" {
+		t.Errorf("SBOMFormat = %q, want %q (fallback)", cfg.SBOMFormat, "cyclonedx")
 	}
 }
