@@ -26,6 +26,9 @@ type Config struct {
 	TrivyDBRepo       string
 	TrivySkipDBUpdate bool
 
+	SBOMEnabled bool
+	SBOMFormat  string
+
 	LogLevel  string
 	LogFormat string
 }
@@ -153,11 +156,25 @@ func Load() (*Config, error) {
 		TrivyDBRepo:       GetEnvOrDefault("TRIVY_DB_REPO", ""),
 		TrivySkipDBUpdate: getBoolEnvOrDefault("TRIVY_SKIP_DB_UPDATE", false),
 
+		SBOMEnabled: getBoolEnvOrDefault("SBOM_ENABLED", false),
+		SBOMFormat:  parseSBOMFormat(GetEnvOrDefault("SBOM_FORMAT", "cyclonedx")),
+
 		LogLevel:  GetEnvOrDefault("LOG_LEVEL", "info"),
 		LogFormat: GetEnvOrDefault("LOG_FORMAT", "json"),
 	}
 
 	return cfg, nil
+}
+
+func parseSBOMFormat(raw string) string {
+	switch strings.ToLower(raw) {
+	case "cyclonedx":
+		return "cyclonedx"
+	case "spdx-json":
+		return "spdx-json"
+	default:
+		return "cyclonedx"
+	}
 }
 
 func GetEnvOrDefault(key, defaultValue string) string {

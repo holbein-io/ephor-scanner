@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 )
@@ -86,6 +87,19 @@ type ScanIngestResponse struct {
 	CriticalVulns   int   `json:"critical_vulns"`
 	AutoResolved    int   `json:"auto_resolved"`
 	Reopened        int   `json:"reopened"`
+}
+
+type SBOMIngestRequest struct {
+	ImageReference string          `json:"image_reference"`
+	ImageDigest    string          `json:"image_digest,omitempty"`
+	ScanGroupId    string          `json:"scan_group_id"`
+	Format         string          `json:"format"`
+	SBOM           json.RawMessage `json:"sbom"`
+}
+
+type SBOMIngestResponse struct {
+	ImageReference string `json:"image_reference"`
+	Stored         bool   `json:"stored"`
 }
 
 type ScanStatus string

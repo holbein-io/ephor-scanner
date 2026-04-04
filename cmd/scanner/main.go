@@ -2,17 +2,20 @@ package main
 
 import (
 	"context"
-	"ephor-scanner/config"
-	"ephor-scanner/internal/api"
-	"ephor-scanner/internal/discovery"
-	"ephor-scanner/internal/processor"
-	"ephor-scanner/internal/scanner"
+	"encoding/json"
 	"log/slog"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"ephor-scanner/config"
+	"ephor-scanner/internal/api"
+	"ephor-scanner/internal/discovery"
+	"ephor-scanner/internal/models"
+	"ephor-scanner/internal/processor"
+	"ephor-scanner/internal/scanner"
 
 	"github.com/google/uuid"
 	"k8s.io/client-go/kubernetes"
@@ -30,18 +33,18 @@ func main() {
 
 	slog.Info("ephor-scanner starting", "version", version)
 
-	// Phase 1: Load config
+	// 1. Load config
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
-	slog.Info("configuration loaded", "namespaces", cfg.ScanNamespaces, "concurrency", cfg.ScanConcurrency)
+	slog.Info("configuration loaded", "namespaces", cfg.ScanNamespaces, "concurrency", cfg.ScanConcurrency, "sbom_enabled", cfg.SBOMEnabled)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	// Phase 2: Discover workloads
+	// 2. Discover workloads
 	k8sClient, err := buildK8sClient()
 	if err != nil {
 		slog.Error("failed to create kubernetes client", "error", err)
@@ -61,11 +64,11 @@ func main() {
 		return
 	}
 
-	// Phase 3: Deduplicate images
+	// 3. Deduplicate images
 	uniqueImages := processor.DeduplicateImages(workloads)
 	slog.Info("image deduplication completed", "unique_images", len(uniqueImages))
 
-	// Phase 4: Update Trivy DB and scan images
+	// 4. Update Trivy DB and scan images
 	sc := scanner.NewScanner(cfg)
 
 	if err := sc.UpdateDB(ctx); err != nil {
@@ -80,7 +83,15 @@ func main() {
 	scanResults := processor.ScanImages(ctx, sc, uniqueImages, cfg.ScanConcurrency)
 	slog.Info("scanning completed", "total", len(uniqueImages), "results", len(scanResults))
 
-	// Phase 5: Build and deliver per-namespace payloads
+	// 5. Generate SBOMs (if enabled)
+	var sbomResults map[string]*processor.SBOMResult
+	if cfg.SBOMEnabled {
+		slog.Info("sbom generation enabled", "format", cfg.SBOMFormat)
+		sbomResults = processor.GenerateSBOMs(ctx, sc, uniqueImages, cfg.ScanConcurrency, cfg.SBOMFormat)
+		slog.Info("sbom generation completed", "total", len(uniqueImages), "results", len(sbomResults))
+	}
+
+	// 6. Build and deliver per-namespace payloads
 	client := api.NewClient(cfg, version)
 	meta := processor.ScanMeta{
 		ScanGroupID:  scanGroupID,
@@ -113,13 +124,53 @@ func main() {
 		)
 	}
 
-	// Phase 6: Summary
+	// 7. Deliver SBOMs (if enabled)
+	var sbomDeliveryFailures int
+	if cfg.SBOMEnabled && sbomResults != nil {
+		for imageRef, result := range sbomResults {
+			if result.Err != nil {
+				continue
+			}
+
+			digest := ""
+			if scanResult, ok := scanResults[imageRef]; ok && scanResult.Report != nil {
+				if len(scanResult.Report.Metadata.RepoDigests) > 0 {
+					digest = scanResult.Report.Metadata.RepoDigests[0]
+				}
+			}
+
+			sbomReq := &models.SBOMIngestRequest{
+				ImageReference: imageRef,
+				ImageDigest:    digest,
+				ScanGroupId:    scanGroupID,
+				Format:         cfg.SBOMFormat,
+				SBOM:           json.RawMessage(result.Data),
+			}
+
+			resp, err := client.IngestSBOM(ctx, sbomReq)
+			if err != nil {
+				slog.Warn("failed to deliver sbom",
+					"image", imageRef,
+					"error", err,
+				)
+				sbomDeliveryFailures++
+				continue
+			}
+			slog.Info("sbom delivered",
+				"image", imageRef,
+				"stored", resp.Stored,
+			)
+		}
+	}
+
+	// 8. Summary
 	duration := time.Since(startedAt)
 	slog.Info("ephor-scanner completed",
 		"duration", duration.Round(time.Second).String(),
 		"namespaces", len(namespaceWorkloads),
 		"unique_images", len(uniqueImages),
 		"delivery_failures", deliveryFailures,
+		"sbom_delivery_failures", sbomDeliveryFailures,
 	)
 
 	if deliveryFailures > 0 {

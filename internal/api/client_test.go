@@ -1,6 +1,7 @@
 package api
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"ephor-scanner/internal/models"
@@ -145,6 +146,63 @@ func TestIngestScan_Timeout(t *testing.T) {
 	_, err := client.IngestScan(context.Background(), &models.ScanIngestRequest{})
 	if err == nil {
 		t.Fatal("expected timeout error")
+	}
+}
+
+func TestIngestSBOM_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/v1/sbom/ingest" {
+			t.Errorf("expected /api/v1/sbom/ingest, got %s", r.URL.Path)
+		}
+		if r.Header.Get("Content-Encoding") != "gzip" {
+			t.Errorf("expected Content-Encoding gzip, got %s", r.Header.Get("Content-Encoding"))
+		}
+
+		gz, err := gzip.NewReader(r.Body)
+		if err != nil {
+			t.Fatalf("failed to create gzip reader: %v", err)
+		}
+		defer func() { _ = gz.Close() }()
+
+		var req models.SBOMIngestRequest
+		if err := json.NewDecoder(gz).Decode(&req); err != nil {
+			t.Fatalf("failed to decode gzipped request body: %v", err)
+		}
+		if req.ImageReference != "nginx:1.25" {
+			t.Errorf("expected image_reference nginx:1.25, got %s", req.ImageReference)
+		}
+		if req.Format != "cyclonedx" {
+			t.Errorf("expected format cyclonedx, got %s", req.Format)
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(models.SBOMIngestResponse{
+			ImageReference: "nginx:1.25",
+			Stored:         true,
+		})
+	}))
+	defer server.Close()
+
+	client := &Client{
+		BaseUrl:    server.URL,
+		Version:    "v1.0.0",
+		HTTPClient: server.Client(),
+	}
+
+	resp, err := client.IngestSBOM(context.Background(), &models.SBOMIngestRequest{
+		ImageReference: "nginx:1.25",
+		ScanGroupId:    "test-group",
+		Format:         "cyclonedx",
+		SBOM:           json.RawMessage(`{"bomFormat":"CycloneDX"}`),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !resp.Stored {
+		t.Error("expected Stored = true")
 	}
 }
 

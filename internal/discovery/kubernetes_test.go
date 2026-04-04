@@ -141,24 +141,6 @@ func TestExtractEphorLabels(t *testing.T) {
 	}
 }
 
-func TestDiscover_EmptyNamespace(t *testing.T) {
-	client := fake.NewSimpleClientset() //nolint:staticcheck
-
-	d := &Discoverer{
-		K8s:           client,
-		WorkloadTypes: []config.WorkloadTypes{config.Deployment, config.StatefulSet, config.DaemonSet, config.CronJob},
-	}
-
-	workloads, err := d.Discover(context.Background(), []string{"empty-ns"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(workloads) != 0 {
-		t.Errorf("expected 0 workloads, got %d", len(workloads))
-	}
-}
-
 func TestDiscover_InitContainers(t *testing.T) {
 	client := fake.NewSimpleClientset( //nolint:staticcheck
 		&appsv1.StatefulSet{

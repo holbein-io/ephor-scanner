@@ -11,10 +11,18 @@ import (
 
 type mockScanner struct {
 	scanFunc func(ctx context.Context, imageRef string) (*scanner.TrivyReport, error)
+	sbomFunc func(ctx context.Context, imageRef string, format string) ([]byte, error)
 }
 
 func (m *mockScanner) ScanImage(ctx context.Context, imageRef string) (*scanner.TrivyReport, error) {
 	return m.scanFunc(ctx, imageRef)
+}
+
+func (m *mockScanner) GenerateSBOM(ctx context.Context, imageRef string, format string) ([]byte, error) {
+	if m.sbomFunc != nil {
+		return m.sbomFunc(ctx, imageRef, format)
+	}
+	return nil, fmt.Errorf("sbom not implemented")
 }
 
 func TestScanImages_AllSuccess(t *testing.T) {
@@ -73,6 +81,21 @@ func TestScanImages_PartialFailure(t *testing.T) {
 	}
 	if results["broken:latest"].Report != nil {
 		t.Error("broken: expected nil report")
+	}
+}
+
+func TestGenerateSBOMs_PassesFormat(t *testing.T) {
+	var gotFormat string
+	s := &mockScanner{
+		sbomFunc: func(ctx context.Context, imageRef string, format string) ([]byte, error) {
+			gotFormat = format
+			return []byte(`{}`), nil
+		},
+	}
+
+	GenerateSBOMs(context.Background(), s, []string{"nginx:1.25"}, 1, "spdx-json")
+	if gotFormat != "spdx-json" {
+		t.Errorf("format = %q, want %q", gotFormat, "spdx-json")
 	}
 }
 

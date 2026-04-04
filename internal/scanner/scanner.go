@@ -70,13 +70,36 @@ func (s *Scanner) UpdateDB(ctx context.Context) error {
 }
 
 func (s *Scanner) ScanImage(ctx context.Context, imageRef string) (*TrivyReport, error) {
+	stdout, err := s.runImageScan(ctx, imageRef, "json")
+	if err != nil {
+		return nil, fmt.Errorf("trivy image scan failed: %w", err)
+	}
+
+	var report TrivyReport
+	if err := json.Unmarshal(stdout, &report); err != nil {
+		return nil, fmt.Errorf("failed to parse trivy output: %w", err)
+	}
+
+	return &report, nil
+}
+
+func (s *Scanner) GenerateSBOM(ctx context.Context, imageRef string, format string) ([]byte, error) {
+	stdout, err := s.runImageScan(ctx, imageRef, format)
+	if err != nil {
+		return nil, fmt.Errorf("trivy sbom generation failed: %w", err)
+	}
+
+	return stdout, nil
+}
+
+func (s *Scanner) runImageScan(ctx context.Context, imageRef string, format string) ([]byte, error) {
 	scanCacheDir, err := s.createScanCacheDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scan cache dir: %w", err)
 	}
 	defer func() { _ = os.RemoveAll(scanCacheDir) }()
 
-	args := []string{"image", imageRef, "--format", "json", "--scanners", "vuln", "--cache-dir", scanCacheDir,
+	args := []string{"image", imageRef, "--format", format, "--scanners", "vuln", "--cache-dir", scanCacheDir,
 		"--timeout", strconv.Itoa(int(s.ScanTimeout.Seconds())) + "s"}
 	if s.dbReady || s.SkipDBUpdate {
 		args = append(args, "--skip-db-update")
@@ -84,6 +107,7 @@ func (s *Scanner) ScanImage(ctx context.Context, imageRef string) (*TrivyReport,
 	if s.DBRepo != "" {
 		args = append(args, "--db-repository", s.DBRepo)
 	}
+
 	ctx, cancel := context.WithTimeout(ctx, s.ScanTimeout)
 	defer cancel()
 
@@ -91,17 +115,11 @@ func (s *Scanner) ScanImage(ctx context.Context, imageRef string) (*TrivyReport,
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	err = cmd.Run()
-	if err != nil {
-		return nil, fmt.Errorf("trivy image scan failed: %w\nstderr: %s", err, stderr.String())
-	}
-	var report TrivyReport
-	err = json.Unmarshal(stdout.Bytes(), &report)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse trivy output: %w", err)
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("%w\nstderr: %s", err, stderr.String())
 	}
 
-	return &report, nil
+	return stdout.Bytes(), nil
 }
 
 func (s *Scanner) createScanCacheDir() (string, error) {
