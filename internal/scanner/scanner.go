@@ -20,8 +20,12 @@ type Scanner struct {
 	ScanTimeout     time.Duration
 	DBUpdateTimeout time.Duration
 	DBRepo          string
+	JavaDBRepo      string
+	CacheMode       string
+	CacheBackend    string
 	SkipDBUpdate    bool
 	dbReady         bool
+	javaDBReady     bool
 
 	Namespaces    []string
 	Concurrency   int
@@ -35,6 +39,9 @@ func NewScanner(cfg *config.Config) *Scanner {
 		ScanTimeout:     cfg.TrivyScanTimeout,
 		DBUpdateTimeout: cfg.TrivyDBUpdateTimeout,
 		DBRepo:          cfg.TrivyDBRepo,
+		JavaDBRepo:      cfg.TrivyJavaDBRepo,
+		CacheMode:       cfg.TrivyCacheMode,
+		CacheBackend:    cfg.TrivyCacheBackend,
 		SkipDBUpdate:    cfg.TrivySkipDBUpdate,
 		Namespaces:      cfg.ScanNamespaces,
 		Concurrency:     cfg.ScanConcurrency,
@@ -48,24 +55,34 @@ func (s *Scanner) UpdateDB(ctx context.Context) error {
 		slog.Warn("DB Update is disabled, skipping...")
 		return nil
 	}
+	if err := s.downloadDB(ctx, "--download-db-only", "--db-repository", s.DBRepo); err != nil {
+		return fmt.Errorf("trivy db update failed: %w", err)
+	}
+	s.dbReady = true
+
+	if err := s.downloadDB(ctx, "--download-java-db-only", "--java-db-repository", s.JavaDBRepo); err != nil {
+		return fmt.Errorf("trivy java-db update failed: %w", err)
+	}
+	s.javaDBReady = true
+	return nil
+}
+
+func (s *Scanner) downloadDB(ctx context.Context, downloadFlag, repoFlag, repo string) error {
 	ctx, cancel := context.WithTimeout(ctx, s.DBUpdateTimeout)
 	defer cancel()
 
-	args := []string{"image", "--download-db-only", "--cache-dir", s.CacheDir,
+	args := []string{"image", downloadFlag, "--cache-dir", s.CacheDir,
 		"--timeout", strconv.Itoa(int(s.DBUpdateTimeout.Seconds())) + "s"}
-	if s.DBRepo != "" {
-		args = append(args, "--db-repository", s.DBRepo)
+	if repo != "" {
+		args = append(args, repoFlag, repo)
 	}
 
 	cmd := exec.CommandContext(ctx, s.BinaryDir, args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("trivy db update failed: %w\nstderr: %s", err, stderr.String())
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%w\nstderr: %s", err, stderr.String())
 	}
-
-	s.dbReady = true
 	return nil
 }
 
@@ -93,19 +110,28 @@ func (s *Scanner) GenerateSBOM(ctx context.Context, imageRef string, format stri
 }
 
 func (s *Scanner) runImageScan(ctx context.Context, imageRef string, format string) ([]byte, error) {
-	scanCacheDir, err := s.createScanCacheDir()
+	cacheDir, cleanup, err := s.resolveScanCache()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create scan cache dir: %w", err)
+		return nil, fmt.Errorf("failed to prepare scan cache: %w", err)
 	}
-	defer func() { _ = os.RemoveAll(scanCacheDir) }()
+	defer cleanup()
 
-	args := []string{"image", imageRef, "--format", format, "--scanners", "vuln", "--cache-dir", scanCacheDir,
+	args := []string{"image", imageRef, "--format", format, "--scanners", "vuln", "--cache-dir", cacheDir,
 		"--timeout", strconv.Itoa(int(s.ScanTimeout.Seconds())) + "s"}
+	if s.CacheMode == config.CacheModeRedis {
+		args = append(args, "--cache-backend", s.CacheBackend)
+	}
 	if s.dbReady || s.SkipDBUpdate {
 		args = append(args, "--skip-db-update")
 	}
+	if s.javaDBReady || s.SkipDBUpdate {
+		args = append(args, "--skip-java-db-update")
+	}
 	if s.DBRepo != "" {
 		args = append(args, "--db-repository", s.DBRepo)
+	}
+	if s.JavaDBRepo != "" {
+		args = append(args, "--java-db-repository", s.JavaDBRepo)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, s.ScanTimeout)
@@ -120,6 +146,18 @@ func (s *Scanner) runImageScan(ctx context.Context, imageRef string, format stri
 	}
 
 	return stdout.Bytes(), nil
+}
+
+// resolveScanCache returns the cache dir for a scan and a cleanup to run after it.
+func (s *Scanner) resolveScanCache() (string, func(), error) {
+	if s.CacheMode == config.CacheModeEphemeral {
+		dir, err := s.createScanCacheDir()
+		if err != nil {
+			return "", func() {}, err
+		}
+		return dir, func() { _ = os.RemoveAll(dir) }, nil
+	}
+	return s.CacheDir, func() {}, nil
 }
 
 func (s *Scanner) createScanCacheDir() (string, error) {

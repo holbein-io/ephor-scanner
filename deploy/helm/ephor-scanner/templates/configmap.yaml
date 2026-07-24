@@ -12,12 +12,20 @@ data:
   SCAN_WORKLOAD_TYPES: {{ .Values.scan.workloadTypes | quote }}
   TRIVY_BINARY: {{ .Values.trivy.binary | quote }}
   TRIVY_CACHE_DIR: {{ .Values.trivy.cacheDir | quote }}
+  TRIVY_CACHE_MODE: {{ .Values.trivy.cacheMode | quote }}
+  {{- if .Values.trivy.cacheBackend }}
+  TRIVY_CACHE_BACKEND: {{ .Values.trivy.cacheBackend | quote }}
+  {{- end }}
   TRIVY_TIMEOUT: {{ .Values.trivy.timeout | quote }}
   TRIVY_DB_UPDATE_TIMEOUT: {{ .Values.trivy.dbUpdateTimeout | quote }}
   TRIVY_SKIP_DB_UPDATE: {{ .Values.trivy.skipDbUpdate | quote }}
   {{- if .Values.trivy.dbRepo }}
   TRIVY_DB_REPO: {{ .Values.trivy.dbRepo | quote }}
   TRIVY_DB_REPOSITORY: {{ .Values.trivy.dbRepo | quote }}
+  {{- end }}
+  {{- if .Values.trivy.javaDbRepo }}
+  TRIVY_JAVA_DB_REPO: {{ .Values.trivy.javaDbRepo | quote }}
+  TRIVY_JAVA_DB_REPOSITORY: {{ .Values.trivy.javaDbRepo | quote }}
   {{- end }}
   SBOM_ENABLED: {{ .Values.sbom.enabled | quote }}
   SBOM_FORMAT: {{ .Values.sbom.format | quote }}

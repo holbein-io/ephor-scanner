@@ -11,7 +11,8 @@ func clearEnv(t *testing.T) {
 	keys := []string{
 		"EPHOR_API_URL", "EPHOR_AUTH_HEADER", "EPHOR_AUTH_VALUE",
 		"SCAN_NAMESPACES", "SCAN_CONCURRENCY", "SCAN_SEVERITY", "SCAN_WORKLOAD_TYPES",
-		"TRIVY_BINARY", "TRIVY_CACHE_DIR", "TRIVY_TIMEOUT", "TRIVY_DB_REPO", "TRIVY_SKIP_DB_UPDATE",
+		"TRIVY_BINARY", "TRIVY_CACHE_DIR", "TRIVY_CACHE_MODE", "TRIVY_CACHE_BACKEND",
+		"TRIVY_TIMEOUT", "TRIVY_DB_REPO", "TRIVY_JAVA_DB_REPO", "TRIVY_SKIP_DB_UPDATE",
 		"SBOM_ENABLED", "SBOM_FORMAT",
 		"LOG_LEVEL", "LOG_FORMAT",
 	}
@@ -171,5 +172,66 @@ func TestLoad_SBOMInvalidFormatFallsBack(t *testing.T) {
 
 	if cfg.SBOMFormat != "cyclonedx" {
 		t.Errorf("SBOMFormat = %q, want %q (fallback)", cfg.SBOMFormat, "cyclonedx")
+	}
+}
+
+func TestLoad_CacheModeDefault(t *testing.T) {
+	clearEnv(t)
+	setRequiredEnv(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.TrivyCacheMode != CacheModeEphemeral {
+		t.Errorf("TrivyCacheMode = %q, want %q", cfg.TrivyCacheMode, CacheModeEphemeral)
+	}
+}
+
+func TestLoad_CacheModeSharedForcesSerial(t *testing.T) {
+	clearEnv(t)
+	setRequiredEnv(t)
+	t.Setenv("TRIVY_CACHE_MODE", "shared")
+	t.Setenv("SCAN_CONCURRENCY", "5")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.ScanConcurrency != 1 {
+		t.Errorf("ScanConcurrency = %d, want 1 (shared cache forces serial)", cfg.ScanConcurrency)
+	}
+}
+
+func TestLoad_CacheModeRedisRequiresBackend(t *testing.T) {
+	clearEnv(t)
+	setRequiredEnv(t)
+	t.Setenv("TRIVY_CACHE_MODE", "redis")
+
+	if _, err := Load(); err == nil {
+		t.Fatal("expected error when TRIVY_CACHE_MODE=redis without TRIVY_CACHE_BACKEND")
+	}
+
+	t.Setenv("TRIVY_CACHE_BACKEND", "redis://localhost:6379")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error with backend set: %v", err)
+	}
+	if cfg.TrivyCacheMode != CacheModeRedis {
+		t.Errorf("TrivyCacheMode = %q, want %q", cfg.TrivyCacheMode, CacheModeRedis)
+	}
+}
+
+func TestLoad_CacheModeInvalidFallsBack(t *testing.T) {
+	clearEnv(t)
+	setRequiredEnv(t)
+	t.Setenv("TRIVY_CACHE_MODE", "bogus")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.TrivyCacheMode != CacheModeEphemeral {
+		t.Errorf("TrivyCacheMode = %q, want %q (fallback)", cfg.TrivyCacheMode, CacheModeEphemeral)
 	}
 }

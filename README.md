@@ -62,9 +62,12 @@ All configuration is via environment variables. When deployed with the Helm char
 | `EPHOR_AUTH_VALUE` | _(none)_ | Authentication header value |
 | `TRIVY_BINARY` | `trivy` | Path to the Trivy executable |
 | `TRIVY_CACHE_DIR` | `/tmp/trivy-cache` | Trivy cache directory |
+| `TRIVY_CACHE_MODE` | `ephemeral` | Layer cache reuse: `ephemeral` (throwaway per scan), `shared` (reuse layers, forces serial scans), `redis` (reuse layers, keeps concurrency) |
+| `TRIVY_CACHE_BACKEND` | _(none)_ | Cache backend URL, required for `TRIVY_CACHE_MODE=redis` (e.g. `redis://ephor-redis:6379`) |
 | `TRIVY_TIMEOUT` | `300` | Per-image scan timeout in seconds |
 | `TRIVY_DB_UPDATE_TIMEOUT` | `60` | Vulnerability DB update timeout in seconds |
 | `TRIVY_DB_REPO` | _(none)_ | Custom OCI repository for the Trivy DB (air-gapped environments) |
+| `TRIVY_JAVA_DB_REPO` | _(none)_ | Custom OCI repository for the Trivy Java DB (air-gapped environments) |
 | `TRIVY_SKIP_DB_UPDATE` | `false` | Skip DB update if cache is pre-populated |
 | `LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warn`, `error`) |
 | `LOG_FORMAT` | `json` | Log format (`json` or `text`) |

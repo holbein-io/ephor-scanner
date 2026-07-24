@@ -61,6 +61,10 @@ trivy:
   binary: "trivy"
   # -- Cache directory for Trivy DB
   cacheDir: "/tmp/trivy-cache"
+  # -- Cache mode: ephemeral (throwaway per scan), shared (reuse layers, serial), redis (reuse layers, concurrent)
+  cacheMode: "ephemeral"
+  # -- Cache backend URL, required when cacheMode is redis (e.g. redis://ephor-redis:6379)
+  cacheBackend: ""
   # -- Scan timeout in seconds
   timeout: "300"
   # -- DB update timeout in seconds
@@ -69,6 +73,8 @@ trivy:
   skipDbUpdate: "false"
   # -- Custom Trivy DB OCI repository (leave empty for default)
   dbRepo: ""
+  # -- Custom Trivy Java DB OCI repository (leave empty for default)
+  javaDbRepo: ""
 
 # -- SBOM generation settings (stored in ConfigMap)
 sbom:
@@ -99,10 +105,10 @@ cache:
 resources:
   requests:
     cpu: 100m
-    memory: 128Mi
+    memory: 512Mi
   limits:
     cpu: "1"
-    memory: 512Mi
+    memory: 2Gi
 
 # -- Node selector for pod scheduling
 nodeSelector: {}
