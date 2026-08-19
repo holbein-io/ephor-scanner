@@ -63,7 +63,7 @@ trivy:
   cacheDir: "/tmp/trivy-cache"
   # -- Cache mode: ephemeral (throwaway per scan), shared (reuse layers, serial), redis (reuse layers, concurrent)
   cacheMode: "ephemeral"
-  # -- Cache backend URL, required when cacheMode is redis (e.g. redis://ephor-redis:6379)
+  # -- Cache backend URL, required when cacheMode is redis (e.g. redis://ephor-redis:6379); ignored in other cache modes
   cacheBackend: ""
   # -- Scan timeout in seconds
   timeout: "300"

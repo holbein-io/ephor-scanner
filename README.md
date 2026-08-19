@@ -24,6 +24,8 @@ The scanner runs as a Kubernetes CronJob and executes a stateless 6-phase pipeli
 
 Each run generates a scan group ID (UUID) that links all per-namespace payloads together. Failed image scans are logged but do not block delivery of successful results.
 
+With `SBOM_ENABLED=true`, each unique image is scanned a second time to produce an SBOM, delivered under the same scan group ID. See [SBOM Generation](#sbom-generation).
+
 ## Quick Start
 
 Prerequisites: a Kubernetes cluster with [Helm 3](https://helm.sh/) installed.
@@ -56,8 +58,10 @@ All configuration is via environment variables. When deployed with the Helm char
 | Variable | Default | Description |
 |---|---|---|
 | `SCAN_CONCURRENCY` | `3` | Number of parallel image scans |
-| `SCAN_SEVERITY` | `CRITICAL,HIGH,MEDIUM,LOW` | Severity levels to include |
+| `SCAN_SEVERITY` | `CRITICAL,HIGH,MEDIUM,LOW` | Severity levels to report, passed to Trivy as `--severity` (excludes `UNKNOWN`) |
 | `SCAN_WORKLOAD_TYPES` | `Deployment,StatefulSet,DaemonSet,CronJob` | Workload types to discover |
+| `SBOM_ENABLED` | `false` | Generate an SBOM per image alongside the vulnerability scan |
+| `SBOM_FORMAT` | `cyclonedx` | SBOM output format: `cyclonedx` or `spdx-json` |
 | `EPHOR_AUTH_HEADER` | _(none)_ | Custom authentication header name |
 | `EPHOR_AUTH_VALUE` | _(none)_ | Authentication header value |
 | `TRIVY_BINARY` | `trivy` | Path to the Trivy executable |
@@ -82,6 +86,11 @@ Key values for the Helm chart at `deploy/helm/ephor-scanner/`:
 | `ephor.apiUrl` | `""` | Ephor API URL (required) |
 | `scan.namespaces` | `""` | Target namespaces (required) |
 | `scan.concurrency` | `3` | Parallel image scans |
+| `scan.severity` | `CRITICAL,HIGH,MEDIUM,LOW` | Severity filter passed to Trivy |
+| `trivy.cacheMode` | `ephemeral` | Layer cache reuse: `ephemeral`, `shared`, or `redis` |
+| `trivy.cacheBackend` | `""` | Cache backend URL; only rendered when `trivy.cacheMode` is `redis` |
+| `sbom.enabled` | `false` | Generate an SBOM per image |
+| `sbom.format` | `cyclonedx` | SBOM format: `cyclonedx` or `spdx-json` |
 | `cache.enabled` | `true` | Persist Trivy DB across runs via PVC |
 | `cache.size` | `1Gi` | PVC storage size |
 | `activeDeadlineSeconds` | `3600` | Maximum job runtime |
@@ -89,6 +98,20 @@ Key values for the Helm chart at `deploy/helm/ephor-scanner/`:
 | `resources.limits.memory` | `512Mi` | Memory limit |
 
 See `deploy/helm/ephor-scanner/values.yaml` for the full list of configurable values.
+
+## SBOM Generation
+
+Disabled by default. Set `SBOM_ENABLED=true` (Helm: `sbom.enabled`) to emit a software bill of materials for every unique image alongside the vulnerability scan.
+
+```bash
+helm upgrade ephor-scanner ./deploy/helm/ephor-scanner \
+  --set sbom.enabled=true \
+  --set sbom.format=cyclonedx
+```
+
+Each SBOM is a second Trivy invocation on an already-scanned image, so enabling this roughly doubles run time -- size `TRIVY_TIMEOUT` and `activeDeadlineSeconds` accordingly. Results are POSTed one image at a time to `/api/v1/sbom/ingest`, gzip-compressed, carrying the image reference, its repo digest where the scan report exposes one, and the scan group ID. Delivery failures are logged and counted without failing the run or holding up vulnerability delivery. An unrecognised `SBOM_FORMAT` falls back to `cyclonedx`.
+
+`SCAN_SEVERITY` does not apply here. An SBOM is a complete component inventory, so the severity filter is used for the vulnerability report only.
 
 ## Development
 

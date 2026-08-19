@@ -2,7 +2,10 @@ package scanner
 
 import (
 	"encoding/json"
+	"ephor-scanner/config"
 	"os"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -121,5 +124,43 @@ func TestParseScanReport_IgnoresUnknownFields(t *testing.T) {
 	}
 	if len(report.Results) != 1 {
 		t.Fatalf("Results length = %d, want 1", len(report.Results))
+	}
+}
+
+func TestSeverityArgs(t *testing.T) {
+	tests := []struct {
+		name       string
+		severities []config.Severity
+		want       []string
+	}{
+		{"configured subset", []config.Severity{config.CRITICAL, config.HIGH}, []string{"--severity", "CRITICAL,HIGH"}},
+		{"unset omits the flag", nil, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Scanner{Severity: tt.severities}
+			if got := s.severityArgs(); !slices.Equal(got, tt.want) {
+				t.Errorf("severityArgs() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTrivyEnvStripsOwnedVars(t *testing.T) {
+	for _, name := range trivyOwnedEnv {
+		t.Setenv(name, "set-by-deployment")
+	}
+	t.Setenv("TRIVY_USERNAME", "registry-user")
+
+	env := trivyEnv()
+	for _, kv := range env {
+		name, _, _ := strings.Cut(kv, "=")
+		if slices.Contains(trivyOwnedEnv, name) {
+			t.Errorf("%s leaked into the trivy child env", name)
+		}
+	}
+	if !slices.Contains(env, "TRIVY_USERNAME=registry-user") {
+		t.Error("TRIVY_USERNAME was stripped; registry credentials must pass through")
 	}
 }

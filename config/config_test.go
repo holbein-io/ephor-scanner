@@ -14,7 +14,6 @@ func clearEnv(t *testing.T) {
 		"TRIVY_BINARY", "TRIVY_CACHE_DIR", "TRIVY_CACHE_MODE", "TRIVY_CACHE_BACKEND",
 		"TRIVY_TIMEOUT", "TRIVY_DB_REPO", "TRIVY_JAVA_DB_REPO", "TRIVY_SKIP_DB_UPDATE",
 		"SBOM_ENABLED", "SBOM_FORMAT",
-		"LOG_LEVEL", "LOG_FORMAT",
 	}
 	for _, k := range keys {
 		if err := os.Unsetenv(k); err != nil {
@@ -68,12 +67,6 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.TrivySkipDBUpdate != false {
 		t.Errorf("TrivySkipDBUpdate = %v, want false", cfg.TrivySkipDBUpdate)
 	}
-	if cfg.LogLevel != "info" {
-		t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "info")
-	}
-	if cfg.LogFormat != "json" {
-		t.Errorf("LogFormat = %q, want %q", cfg.LogFormat, "json")
-	}
 	if len(cfg.ScanSeverity) != 4 {
 		t.Errorf("ScanSeverity length = %d, want 4", len(cfg.ScanSeverity))
 	}
@@ -117,7 +110,6 @@ func TestLoad_CustomOverrides(t *testing.T) {
 	t.Setenv("TRIVY_BINARY", "/usr/bin/trivy")
 	t.Setenv("TRIVY_TIMEOUT", "10m")
 	t.Setenv("TRIVY_SKIP_DB_UPDATE", "true")
-	t.Setenv("LOG_LEVEL", "debug")
 
 	cfg, err := Load()
 	if err != nil {
@@ -135,9 +127,6 @@ func TestLoad_CustomOverrides(t *testing.T) {
 	}
 	if cfg.TrivySkipDBUpdate != true {
 		t.Errorf("TrivySkipDBUpdate = %v, want true", cfg.TrivySkipDBUpdate)
-	}
-	if cfg.LogLevel != "debug" {
-		t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "debug")
 	}
 }
 

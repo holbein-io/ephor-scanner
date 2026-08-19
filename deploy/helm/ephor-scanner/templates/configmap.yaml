@@ -13,7 +13,7 @@ data:
   TRIVY_BINARY: {{ .Values.trivy.binary | quote }}
   TRIVY_CACHE_DIR: {{ .Values.trivy.cacheDir | quote }}
   TRIVY_CACHE_MODE: {{ .Values.trivy.cacheMode | quote }}
-  {{- if .Values.trivy.cacheBackend }}
+  {{- if and (eq .Values.trivy.cacheMode "redis") .Values.trivy.cacheBackend }}
   TRIVY_CACHE_BACKEND: {{ .Values.trivy.cacheBackend | quote }}
   {{- end }}
   TRIVY_TIMEOUT: {{ .Values.trivy.timeout | quote }}
