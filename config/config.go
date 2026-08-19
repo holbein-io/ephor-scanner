@@ -40,9 +40,6 @@ type Config struct {
 
 	SBOMEnabled bool
 	SBOMFormat  string
-
-	LogLevel  string
-	LogFormat string
 }
 
 type Severity int
@@ -173,9 +170,6 @@ func Load() (*Config, error) {
 
 		SBOMEnabled: getBoolEnvOrDefault("SBOM_ENABLED", false),
 		SBOMFormat:  parseSBOMFormat(GetEnvOrDefault("SBOM_FORMAT", "cyclonedx")),
-
-		LogLevel:  GetEnvOrDefault("LOG_LEVEL", "info"),
-		LogFormat: GetEnvOrDefault("LOG_FORMAT", "json"),
 	}
 
 	if cfg.TrivyCacheMode == CacheModeRedis && cfg.TrivyCacheBackend == "" {

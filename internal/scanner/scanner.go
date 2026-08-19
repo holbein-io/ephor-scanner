@@ -10,7 +10,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -27,10 +29,7 @@ type Scanner struct {
 	dbReady         bool
 	javaDBReady     bool
 
-	Namespaces    []string
-	Concurrency   int
-	Severity      []config.Severity
-	WorkloadTypes []config.WorkloadTypes
+	Severity []config.Severity
 }
 
 func NewScanner(cfg *config.Config) *Scanner {
@@ -43,11 +42,34 @@ func NewScanner(cfg *config.Config) *Scanner {
 		CacheMode:       cfg.TrivyCacheMode,
 		CacheBackend:    cfg.TrivyCacheBackend,
 		SkipDBUpdate:    cfg.TrivySkipDBUpdate,
-		Namespaces:      cfg.ScanNamespaces,
-		Concurrency:     cfg.ScanConcurrency,
 		Severity:        cfg.ScanSeverity,
-		WorkloadTypes:   cfg.ScanWorkloadTypes,
 	}
+}
+
+var trivyOwnedEnv = []string{
+	"TRIVY_TIMEOUT",
+	"TRIVY_CACHE_DIR",
+	"TRIVY_CACHE_BACKEND",
+	"TRIVY_SKIP_DB_UPDATE",
+}
+
+func trivyEnv() []string {
+	env := os.Environ()
+	result := make([]string, 0, len(env))
+	for _, kv := range env {
+		name, _, _ := strings.Cut(kv, "=")
+		if slices.Contains(trivyOwnedEnv, name) {
+			continue
+		}
+		result = append(result, kv)
+	}
+	return result
+}
+
+func (s *Scanner) command(ctx context.Context, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, s.BinaryDir, args...)
+	cmd.Env = trivyEnv()
+	return cmd
 }
 
 func (s *Scanner) UpdateDB(ctx context.Context) error {
@@ -77,7 +99,7 @@ func (s *Scanner) downloadDB(ctx context.Context, downloadFlag, repoFlag, repo s
 		args = append(args, repoFlag, repo)
 	}
 
-	cmd := exec.CommandContext(ctx, s.BinaryDir, args...)
+	cmd := s.command(ctx, args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
@@ -87,7 +109,7 @@ func (s *Scanner) downloadDB(ctx context.Context, downloadFlag, repoFlag, repo s
 }
 
 func (s *Scanner) ScanImage(ctx context.Context, imageRef string) (*TrivyReport, error) {
-	stdout, err := s.runImageScan(ctx, imageRef, "json")
+	stdout, err := s.runImageScan(ctx, imageRef, "json", s.severityArgs()...)
 	if err != nil {
 		return nil, fmt.Errorf("trivy image scan failed: %w", err)
 	}
@@ -109,7 +131,18 @@ func (s *Scanner) GenerateSBOM(ctx context.Context, imageRef string, format stri
 	return stdout, nil
 }
 
-func (s *Scanner) runImageScan(ctx context.Context, imageRef string, format string) ([]byte, error) {
+func (s *Scanner) severityArgs() []string {
+	if len(s.Severity) == 0 {
+		return nil
+	}
+	levels := make([]string, 0, len(s.Severity))
+	for _, sev := range s.Severity {
+		levels = append(levels, sev.String())
+	}
+	return []string{"--severity", strings.Join(levels, ",")}
+}
+
+func (s *Scanner) runImageScan(ctx context.Context, imageRef string, format string, extraArgs ...string) ([]byte, error) {
 	cacheDir, cleanup, err := s.resolveScanCache()
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare scan cache: %w", err)
@@ -133,11 +166,12 @@ func (s *Scanner) runImageScan(ctx context.Context, imageRef string, format stri
 	if s.JavaDBRepo != "" {
 		args = append(args, "--java-db-repository", s.JavaDBRepo)
 	}
+	args = append(args, extraArgs...)
 
 	ctx, cancel := context.WithTimeout(ctx, s.ScanTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, s.BinaryDir, args...)
+	cmd := s.command(ctx, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -180,7 +214,7 @@ func (s *Scanner) createScanCacheDir() (string, error) {
 func (s *Scanner) GetVersion(ctx context.Context) (*TrivyVersion, error) {
 	args := []string{"version", "--format", "json"}
 
-	cmd := exec.CommandContext(ctx, s.BinaryDir, args...)
+	cmd := s.command(ctx, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
