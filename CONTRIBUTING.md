@@ -43,7 +43,7 @@ See the [README](README.md) for full setup details including environment variabl
 # Unit tests
 make test
 
-# Integration tests (requires Trivy binary and network access)
+# Integration tests (requires Docker and network access; extracts the pinned Trivy to bin/trivy)
 make test-integration
 
 # Lint
