@@ -1,0 +1,76 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "labels": ["dependencies"],
+  "minimumReleaseAge": "3 days",
+  "postUpdateOptions": ["gomodTidy"],
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "labels": ["dependencies", "security"],
+    "minimumReleaseAge": null
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Tool versions annotated with a `# renovate:` comment in workflows",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+\\S+:\\s*(?<currentValue>\\S+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Trivy changes what the scanner detects: let releases soak, never automerge, review with the regression diff",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["aquasec/trivy"],
+      "minimumReleaseAge": "14 days",
+      "automerge": false,
+      "addLabels": ["trivy"],
+      "commitMessageTopic": "bundled Trivy"
+    },
+    {
+      "description": "Trivy minor/major bump = scanner minor release (detection behaviour changes)",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["aquasec/trivy"],
+      "matchUpdateTypes": ["major", "minor"],
+      "semanticCommitType": "feat"
+    },
+    {
+      "description": "Trivy patch/digest bump = scanner patch release",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["aquasec/trivy"],
+      "matchUpdateTypes": ["patch", "digest", "pin"],
+      "semanticCommitType": "fix"
+    },
+    {
+      "description": "Go toolchain: keep the builder image and the go.mod go directive in lockstep; ships in the image, so release it",
+      "matchDepNames": ["golang", "go"],
+      "groupName": "Go toolchain",
+      "semanticCommitType": "fix"
+    },
+    {
+      "description": "Runtime base image ships in the image, so release it",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["alpine"],
+      "semanticCommitType": "fix"
+    },
+    {
+      "description": "Kubernetes client libraries move together",
+      "matchDatasources": ["go"],
+      "matchPackageNames": ["k8s.io/**"],
+      "groupName": "Kubernetes client libraries"
+    },
+    {
+      "description": "CI-only updates never trigger a release",
+      "matchManagers": ["github-actions", "custom.regex"],
+      "groupName": "CI tooling",
+      "semanticCommitType": "ci",
+      "semanticCommitScope": null
+    }
+  ]
+}
