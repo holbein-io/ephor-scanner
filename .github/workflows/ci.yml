@@ -25,7 +25,7 @@ jobs:
 
       - uses: golangci/golangci-lint-action@v7
         with:
-          version: latest
+          version: v2.15.0
 
   test:
     name: Unit Test
@@ -52,15 +52,13 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/refs/tags/v0.69.3/contrib/install.sh | sh -s -- -b /usr/local/bin v0.69.3
-
       - name: Pull test image
         run: docker pull alpine:3.21
 
+      # Extracts Trivy from the image pinned (tag + digest) in the Dockerfile,
+      # so CI tests exactly the binary that ships.
       - name: Run integration tests
-        run: go test -race -count=1 -tags=integration ./...
+        run: make test-integration
 
   helm-lint:
     name: Helm Lint

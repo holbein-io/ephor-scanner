@@ -10,6 +10,7 @@ COPY . .
 ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=${VERSION}" -o /ephor-scanner ./cmd/scanner
 
+# Single source of truth for the bundled Trivy version: CI and `make trivy` read this line.
 FROM aquasec/trivy:0.69.3@sha256:7228e304ae0f610a1fad937baa463598cadac0c2ac4027cc68f3a8b997115689 AS trivy
 
 FROM alpine:3.21@sha256:22e0ec13c0db6b3e1ba3280e831fc50ba7bffe58e81f31670a64b1afede247bc
