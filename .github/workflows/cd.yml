@@ -1,9 +1,11 @@
 name: CD
 
+# Pre-release images only. Releases (vX.Y.Z, X.Y, latest) are built by release.yml.
+#   PR    -> pr-<n>, sha-<sha>     (deleted by cleanup-packages.yml when the PR closes)
+#   main  -> edge, main, sha-<sha>
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
     branches: [main]
 
@@ -13,50 +15,20 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
-
-env:
-  REGISTRY: ghcr.io
 
 jobs:
-  build-and-push:
-    name: Build & Push Image
-    runs-on: ubuntu-latest
-    environment: ${{ github.event_name == 'pull_request' && 'staging' || '' }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-qemu-action@v3
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/metadata-action@v5
-        id: meta
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}
-          tags: |
-            type=sha
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          build-args: |
-            VERSION=${{ steps.meta.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+  image:
+    uses: ./.github/workflows/build-image.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    with:
+      environment: ${{ github.event_name == 'pull_request' && 'staging' || '' }}
+      version: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || format('edge-{0}', github.sha) }}
+      sign: ${{ github.event_name != 'pull_request' }}
+      tags: |
+        type=sha
+        type=ref,event=branch
+        type=ref,event=pr
+        type=raw,value=edge,enable={{is_default_branch}}

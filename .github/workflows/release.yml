@@ -1,0 +1,127 @@
+name: Release
+
+# release-please keeps a release PR open on main. Merging it tags vX.Y.Z and creates the
+# GitHub Release; the jobs below then publish the image and the Helm chart for that version.
+# Everything runs in this one workflow because tags created with GITHUB_TOKEN do not
+# trigger other workflows.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    name: Release PR / Tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      created: ${{ steps.rp.outputs.release_created }}
+      tag: ${{ steps.rp.outputs.tag_name }}
+      version: ${{ steps.rp.outputs.version }}
+    steps:
+      # Release PRs opened with GITHUB_TOKEN do not trigger CI, so the required checks on
+      # main would never report. A GitHub App token avoids that. Configure the app via the
+      # RELEASE_APP_ID variable and RELEASE_APP_PRIVATE_KEY secret; falls back to GITHUB_TOKEN.
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        if: vars.RELEASE_APP_ID != ''
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  image:
+    name: Release image
+    needs: release-please
+    if: needs.release-please.outputs.created == 'true'
+    uses: ./.github/workflows/build-image.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    with:
+      version: ${{ needs.release-please.outputs.version }}
+      tags: |
+        type=semver,pattern={{version}},value=${{ needs.release-please.outputs.tag }}
+        type=semver,pattern={{major}}.{{minor}},value=${{ needs.release-please.outputs.tag }}
+        type=raw,value=latest
+      # Add a {{major}} tag rule once the scanner reaches 1.0.0.
+
+  chart:
+    name: Release Helm chart
+    needs: [release-please, image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag }}
+
+      - uses: azure/setup-helm@v4
+
+      - name: Package and push chart to GHCR (OCI)
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+          OWNER: ${{ github.repository_owner }}
+          ACTOR: ${{ github.actor }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$TOKEN" | helm registry login ghcr.io -u "$ACTOR" --password-stdin
+          helm package deploy/helm/ephor-scanner --destination dist
+          helm push "dist/ephor-scanner-${VERSION}.tgz" "oci://ghcr.io/${OWNER}/charts"
+
+  release-notes:
+    name: Add artifact details to release notes
+    needs: [release-please, image, chart]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Append image, chart and Trivy details
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.release-please.outputs.tag }}
+          VERSION: ${{ needs.release-please.outputs.version }}
+          DIGEST: ${{ needs.image.outputs.digest }}
+          TRIVY: ${{ needs.image.outputs.trivy-version }}
+          IMAGE: ghcr.io/${{ github.repository }}
+          CHART: oci://ghcr.io/${{ github.repository_owner }}/charts/ephor-scanner
+        run: |
+          gh release view "$TAG" --json body --jq .body > notes.md
+          cat >> notes.md <<EOF
+
+          ## Artifacts
+
+          | | |
+          |---|---|
+          | Image | \`${IMAGE}:${VERSION}\` |
+          | Digest | \`${DIGEST}\` |
+          | Helm chart | \`helm install ephor-scanner ${CHART} --version ${VERSION}\` |
+          | Bundled Trivy | \`${TRIVY}\` |
+
+          Verify the image signature:
+
+          \`\`\`
+          cosign verify ${IMAGE}@${DIGEST} \\
+            --certificate-identity-regexp '^https://github.com/${GH_REPO}/' \\
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+          \`\`\`
+          EOF
+          gh release edit "$TAG" --notes-file notes.md

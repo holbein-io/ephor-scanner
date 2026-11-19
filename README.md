@@ -31,10 +31,25 @@ With `SBOM_ENABLED=true`, each unique image is scanned a second time to produce 
 Prerequisites: a Kubernetes cluster with [Helm 3](https://helm.sh/) installed.
 
 ```bash
-helm install ephor-scanner ./deploy/helm/ephor-scanner \
+helm install ephor-scanner oci://ghcr.io/holbein-io/charts/ephor-scanner \
+  --version <version> \
   --set ephor.apiUrl=http://ephor-api:8080 \
   --set scan.namespaces=default,production
 ```
+
+Pick `<version>` from the [releases](https://github.com/holbein-io/ephor-scanner/releases); each release's notes list the image digest, the chart version and the bundled Trivy version. The chart's default image tag is the matching scanner release.
+
+### Image tags
+
+| Tag | Meaning |
+|---|---|
+| `X.Y.Z` | A release. Pin this (or the digest) in production. |
+| `X.Y` | Latest patch release of that minor version. |
+| `latest` | Latest release. |
+| `edge` | Latest build of `main`. Unreleased, for testing only. |
+| `sha-<commit>` | A specific build of `main`. |
+
+Release and `main` images are signed with cosign (keyless) and carry SBOM and provenance attestations. The bundled Trivy version is in the `io.holbein.ephor-scanner.trivy-version` image label.
 
 The scanner will run on the default schedule (every 6 hours). To trigger an immediate scan:
 
