@@ -1,0 +1,100 @@
+name: Build image
+
+# Reusable build: called by cd.yml (PRs, main -> edge) and release.yml (vX.Y.Z -> latest).
+on:
+  workflow_call:
+    inputs:
+      tags:
+        description: docker/metadata-action tag rules
+        required: true
+        type: string
+      version:
+        description: Version baked into the binary (main.version)
+        required: true
+        type: string
+      environment:
+        description: GitHub environment to run in
+        required: false
+        type: string
+        default: ''
+      sign:
+        description: Sign the pushed image with cosign (keyless)
+        required: false
+        type: boolean
+        default: true
+    outputs:
+      digest:
+        description: Pushed image digest
+        value: ${{ jobs.build.outputs.digest }}
+      trivy-version:
+        description: Trivy version bundled in the image
+        value: ${{ jobs.build.outputs.trivy-version }}
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # cosign keyless signing
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      trivy-version: ${{ steps.trivy.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read bundled Trivy version from Dockerfile
+        id: trivy
+        run: |
+          version=$(sed -n 's|^FROM aquasec/trivy:\([^@ ]*\).*|\1|p' Dockerfile)
+          test -n "$version" || { echo "::error::no aquasec/trivy FROM line in Dockerfile"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          tags: ${{ inputs.tags }}
+          labels: |
+            org.opencontainers.image.version=${{ inputs.version }}
+            io.holbein.ephor-scanner.trivy-version=${{ steps.trivy.outputs.version }}
+
+      - uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            VERSION=${{ inputs.version }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - uses: sigstore/cosign-installer@v3
+        if: inputs.sign
+
+      - name: Sign image
+        if: inputs.sign
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ github.repository }}@${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "$IMAGE"

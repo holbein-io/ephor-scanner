@@ -71,7 +71,20 @@ fix(scanner): handle Trivy timeout for large images
 docs: update Helm values table
 ```
 
-Common types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`.
+Common types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`.
+
+PRs are squash-merged using the **PR title** as the commit message, so the PR title must follow this format too (CI checks it).
+
+## Releases
+
+Releases are automated with [release-please](https://github.com/googleapis/release-please):
+
+- Every merge to `main` updates an open release PR (`chore(main): release X.Y.Z`) with the next version, `CHANGELOG.md` and the Helm chart versions.
+- Merging that release PR tags `vX.Y.Z`, creates the GitHub Release and publishes the signed image (`X.Y.Z`, `X.Y`, `latest`) and the Helm chart (`oci://ghcr.io/holbein-io/charts/ephor-scanner`).
+- Version bumps follow the commit types: `feat` = minor, `fix`/`perf` = patch (while we are pre-1.0, breaking changes bump the minor version). `docs`, `ci`, `chore`, `test`, `refactor` do not trigger a release.
+- Bundled Trivy upgrades come from Renovate: a Trivy minor bump is a `feat`, a patch bump is a `fix`. Note the detection changes in the PR.
+
+Do not edit versions in `Chart.yaml` or `CHANGELOG.md` by hand.
 
 ## Pull Request Guidelines
 

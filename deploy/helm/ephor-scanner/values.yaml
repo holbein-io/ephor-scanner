@@ -1,7 +1,7 @@
 # -- Container image settings
 image:
-  repository: ephor-scanner
-  tag: ""  # Defaults to appVersion
+  repository: ghcr.io/holbein-io/ephor-scanner
+  tag: ""  # Defaults to appVersion (the released scanner version)
   pullPolicy: IfNotPresent
 
 # -- Image pull secrets for private registries
