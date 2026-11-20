@@ -3,5 +3,5 @@ name: ephor-scanner
 description: Kubernetes vulnerability scanner powered by Trivy with Ephor API reporting
 type: application
 # Both versions are bumped by release-please; do not edit by hand.
-version: 0.2.0 # x-release-please-version
-appVersion: "0.2.0" # x-release-please-version
+version: 0.3.0 # x-release-please-version
+appVersion: "0.3.0" # x-release-please-version
